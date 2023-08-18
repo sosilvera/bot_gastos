@@ -1,0 +1,1 @@
+HI_LIST = ['hola', 'holi', 'hi', 'que tal?']
