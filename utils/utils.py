@@ -1,13 +1,23 @@
+import datetime
+
 meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre",
          "noviembre", "diciembre"]
 
+def numero_proximo_mes():
+    fecha_actual = datetime.datetime.now()
+    siguiente_mes = (fecha_actual.month % 12) + 1
+    return siguiente_mes
+
 def filterMonth(text):
     text_lower = text.lower()
-    mes_in_text = ""
-    for i in meses:
-        if i in text_lower:
-            mes_in_text = i
+    mes_in_text = 0
+    for i in range(0,len(meses)):
+        if meses[i] in text_lower:
+            mes_in_text = i+1
             break
+
+    if mes_in_text == 0:
+        mes_in_text = numero_proximo_mes()
     
     return mes_in_text
 

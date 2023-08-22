@@ -11,6 +11,7 @@ class Bot():
         self.name = msg["name"]
         self.id = msg["userId"]
         self.isResponse = msg["response"]
+        self.text = msg["text"]
 
         self.labels = [
             "Hola",
@@ -23,18 +24,6 @@ class Bot():
             "No se reconoció ninguna acción específica."
         ]
 
-        self.labels_dic = {
-            "Hola": self.hi(),
-            "Te sigo ayudando?": self.keepHelping(),
-            "Crear Gasto": self.createGastoFirstResponse(),
-            "Consultar gasto total para el proximo mes": self.queryNextMonth(),
-            "Consultar gasto total para un determinado mes": self.queryTotalsByMonth(u.filterMonth(msg["text"])),
-            "Consultar un gasto por banco para el proximo mes": self.queryTotalsByCardByMonth(msg["text"]),
-            "Obtener un grafico de gastos a 6 meses por banco": self.getGraphForSixMonth(),
-            "No se reconoció ninguna acción específica.": self.defectMessage(),
-            "Continuar creacion": self.createGastoSecondResponse(msg["text"]) 
-        }
-
         self.responseMsg = self.process_text_pipeline(msg["text"], classifier)
 
     def process_text_pipeline(self, text, classifier):
@@ -43,12 +32,15 @@ class Bot():
         self.proccess_result = process["labels"][0]
 
     def hi(self):
+        print("Funcion Hi")
         return {"msg": f"Hola {self.name}, en que puedo ayudarte?", "need_response": False, "image": False}
     
     def keepHelping(self):
+        print("Funcion Keep Help")
         return {"msg":f"{self.name}, en que mas puedo ayudarte?", "need_response": False, "image": False}
     
     def createGastoFirstResponse(self):
+        print("Funcion Create")
         datos = """
             Nombre:
             Monto:
@@ -65,6 +57,7 @@ class Bot():
             }
 
     def createGastoSecondResponse(self, text):
+        print("Funcion Create Gastos")
         bancos = self.q.queryBancos()
         gasto = u.parseGasto(text, bancos)
         # Obtener mes actual y sumarle 1
@@ -90,6 +83,7 @@ class Bot():
         self.q.insertGastoMes(idPrimeraCuota, idGasto, gasto["valor_cuota"], gasto["cantidad_cuotas"])
 
     def queryNextMonth(self):
+        print("Funcion Next Month")
         mesActual = datetime.date.today().month
         periodo = self.q.queryPeriodoByMes(mesActual + 1, 2023)
         total = self.q.queryTotalByPeriodo(periodo)
@@ -101,6 +95,7 @@ class Bot():
         }
 
     def queryTotalsByMonth(self, month):
+        print("Funcion Totals By Month")
         periodo = self.q.queryPeriodoByMes(month, 2023)
         result = self.q.queryTotalByPeriodo(periodo)
         return {
@@ -110,6 +105,7 @@ class Bot():
         }
     
     def queryTotalsByCardByMonth(self, text):
+        print("Funcion Totals By Card By Month")
         banks = self.q.queryBancos()
         card = u.getCards(banks, text)
         month = u.filterMonth(text)
@@ -126,16 +122,38 @@ class Bot():
         }
 
     def getGraphForSixMonth(self):
+        print("Funcion Graph")
         consumos = self.q.queryConsumosPorMes()
         gh.plot_evolucion_gastos(consumos)
         return {"msg": '../images/evolucionGastos.png', "need_response": False, "image": True}
 
     def defectMessage(self):
-        return {"msg": f"{self.name} no entendi lo que me dijiste", "need_response": False}
+        print("Funcion Defect")
+        return {"msg": f"{self.name} no entendi lo que me dijiste", "need_response": False, "image": False}
+
+    def selectResponse(self, process_result):        
+        match process_result:
+            case 'Hola': # Si corre OK -> marco el Running
+                return self.hi()
+            case "Te sigo ayudando?":
+                return self.keepHelping()
+            case "Crear Gasto":
+                return self.createGastoFirstResponse()
+            case "Consultar gasto total para el proximo mes":
+                return self.queryNextMonth()
+            case "Consultar gasto total para un determinado mes": 
+                return self.queryTotalsByMonth(u.filterMonth(self.text))
+            case "Consultar un gasto por banco para el proximo mes":
+                return self.queryTotalsByCardByMonth(self.text)
+            case "Obtener un grafico de gastos a 6 meses por banco":
+                return self.getGraphForSixMonth()
+            case _:
+                return self.defectMessage()
+
 
     def getResponse(self):
         if self.isResponse:
-            return self.labels_dic["Continuar creacion"]
+            return self.createGastoSecondResponse(self.text) 
         else:
             print(self.proccess_result)
-            return self.labels_dic[self.proccess_result]
+            return self.selectResponse(self.proccess_result)
